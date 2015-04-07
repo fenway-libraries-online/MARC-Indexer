@@ -63,7 +63,7 @@ sub compile {
                 $ip{'extract'}    = mkextr($1), next if s/\/\s*($rx_num_range(?:,$rx_num_range)*)$//;
                 $ip{'normalize'}  = mknorm($1), next if s/\>\s*([^<>]+)$//;
                 $ip{'type'}       = $1 || $2,   next if s/\%(?:(n)um(?:eric)?|(s)tr(?:ing)?)$//;
-                $ip{'default'}    = $1,         next if s/\{([^{}]*)\}$//;
+                $ip{'default'}    = [ $1 ],     next if s/\{([^{}]*)\}$//;
                 $ip{'parts'}      = mkpart($1), next if s/([a-z]\w+(?:\s*\+\s*[a-z]\w+)+)$//;
                 $ip{'ephem'}      = 1,          next if s/\!ephem(?:eral)$//i;
                 $tag{$ip{'tag'} = $1||$2} = 1,  next if s/^(L)(?:dr)?|([0-9A-Z]\w\w)//;
