@@ -94,7 +94,7 @@ sub mkmung {
             my @subs = @$v[2..$#$v];
             return $v if !@subs;
             my $i = $i[$in-1];
-            return $v if $i == 0;
+            return $v if $i !~ /[1-9]/;
             substr($subs[0][1], 0, $i) = '';
             return $v;
         };
