@@ -1,0 +1,47 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use MARC::Indexer;
+
+my %index_point;
+my $indexer = MARC::Indexer->new;
+
+while (@ARGV) {
+    local $_ = shift @ARGV;
+    if (s/^-f//) {
+        if (!length $_) {
+            usage() if !@ARGV;
+            $_ = shift @ARGV;
+        }
+        $indexer->read_index_points($_);
+    }
+    else {
+        my ($key, $ip) = split /\s*=\s*/;
+        $index_point{$key} = $ip;
+    }
+}
+$indexer->set_index_points(%index_point) if %index_point;
+
+$/ = "\x1d";
+while (<STDIN>) {
+    my $recid = recid($_);
+    my $index = $indexer->index($_);
+    while (my ($key, $vals) = each $index) {
+        print "$key $_\n" for @$vals;
+    }
+    print "\n";
+}
+
+sub recid {
+    local $_ = shift;
+    my $baseaddr  = substr($_, 12, 5);
+    my $directory = substr($_, 24, $baseaddr - 24);
+    my %val;
+    while ($directory =~ /(...)(....)(.....)/gc) {
+        my ($tag, $len, $ofs) = ($1, $2, $3);
+        return substr($_, $baseaddr + $ofs, $len - 1) if $tag eq '001';
+    }
+}
+
