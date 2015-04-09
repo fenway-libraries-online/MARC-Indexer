@@ -66,9 +66,12 @@ sub compile {
                 $ip{'default'}    = [ $1 ],     next if s/\{([^{}]*)\}$//;
                 $ip{'parts'}      = mkpart($1), next if s/([a-z]\w+(?:\s*\+\s*[a-z]\w+)+)$//;
                 $ip{'ephem'}      = 1,          next if s/\!ephem(?:eral)$//i;
+                $ip{'whole'}      = mkwhol($1), next if s/\@(\S+)//;
                 $tag{$ip{'tag'} = $1||$2} = 1,  next if s/^(L)(?:dr)?|([0-9A-Z]\w\w)//;
                 die;
             }
+            die "Field $ip{'tag'} and whole-record evaluator $ip{'whole'} conflict"
+                if defined $ip{'tag'} && defined $ip{'whole'};
             $index_point{$name} = \%ip;
         }
         $self->{'tags'} = \%tag;
@@ -76,6 +79,13 @@ sub compile {
         $self->{'is_compiled'} = 1;
     }
     return $self;
+}
+
+sub mkwhol {
+    local $_ = shift;
+    my $sub = __PACKAGE__->can('whol_'.trim($_))
+        or die "No such whole-record evaluator $_";
+    return $sub;
 }
 
 sub mkpart {
@@ -200,12 +210,13 @@ sub index {
     # 2. Normalize and store everything used in each indexing point
     my %index;
     my $ips = $self->{'index_points'};
-    # Synthetic index points must be processed after all others
+    # Sort synthetic index points to the end because they must be processed after all others
     my @names = sort { ( $ips->{$a}{'parts'} ? 1 : 0 ) <=> ( $ips->{$b}{'parts'} ? 1 : 0 ) } keys %$ips;
     foreach my $name (@names) {
         my $ip = $ips->{$name};
-        my ($tag, $parts, $min, $max, $cond, $mung, $extr, $sels, $norm) = @$ip{qw(tag parts min max condition munge extract select normalize)};
-        my @vals = $parts      ? $self->synthesize(\%index, @$parts)
+        my ($whole, $tag, $parts, $min, $max, $cond, $mung, $extr, $sels, $norm) = @$ip{qw(whole tag parts min max condition munge extract select normalize)};
+        my @vals = $whole      ? $whole->($marcref)
+                 : $parts      ? $self->synthesize(\%index, @$parts)
                  : $tag eq 'L' ? ( substr($$marcref, 0, 24) )
                  : @{ $field{$tag} ||= [] }
                  ;
@@ -254,6 +265,11 @@ sub cond_ind_eq {
         die "Not a data field value" if !ref $val;
         return $in > 0 && $in <= 2 && $val->[$in-1] eq $iv;
     }
+}
+
+sub whol_fieldcount {
+    local $_ = shift;
+    int((CORE::index($$_, "\x1e", 24) - 24) / 12);
 }
 
 sub norm_date2unix {
