@@ -103,7 +103,7 @@ sub marcdata {
 sub source2eval {
     my ($source) = @_;
     if ($source =~ m{^(?:L|leader)/(\d+)$}) {
-        my $pos = $1 - 1;
+        my $pos = $1;
         return sub { substr($_, $pos, 1) };
     }
     elsif ($source =~ m{^(00[0-9A-Za-z])(?:/(\d+)(?:-(\d+))?)?$}) {
