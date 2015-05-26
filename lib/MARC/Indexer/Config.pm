@@ -11,6 +11,7 @@ use constant COMMA => 1 << 4;
 use constant SEMIC => 1 << 5;
 use constant ASTER => 1 << 6;
 use constant NEWLN => 1 << 7;
+use constant REGEX => 1 << 8;
 
 sub new {
     my ($cls, $f) = @_;
@@ -23,7 +24,13 @@ sub parse {
     my ($self, $f) = @_;
     $f = $self->{'file'} || die "No file given"
         if !defined $f;
-    open my $fh, '<', $f or die "Can't open file $f: $!";
+    my $fh;
+    if (ref $f) {
+        $fh = $f;
+    }
+    else {
+        open $fh, '<', $f or die "Can't open file $f: $!";
+    }
     local $/;
     my $src = $self->{'source'} = <$fh>;
     $src =~ s/^\s*#.*//mg;
@@ -144,6 +151,9 @@ sub _term_body {
             die;
         }
     }
+    $term->{'norm'}   = [ list($term->{'norm'}) ];
+    $term->{'prefix'} = [ list($term->{'prefix'}) ];
+    $term->{'match'}  = qr/$term->{'match'}/ if defined $term->{'match'};
 }
 
 sub _mkprop {
@@ -183,12 +193,13 @@ sub _tokenize {
         $lno++, next if /\G\n/gc;
         push @tok,
             /\G(\s+)/gc                  ? [ SPACE,  $1,         $lno    ] :
-            /\G([:.\/\w][-:.\$\/\w]*)/gc ? [ PLAIN,  $1,         $lno    ] :
+            /\G([:.\w][-:.\$\/\w]*)/gc   ? [ PLAIN,  $1,         $lno    ] :
             /\G"((?:\\.|[^"])*)"/gc      ? [ QUOTE,  _unesc($1), $lno    ] :
             /\G(,)/gc                    ? [ COMMA,  $1,         $lno    ] :
             /\G(;)/gc                    ? [ SEMIC,  $1,         $lno    ] :
             /\G(\*)/gc                   ? [ ASTER,  $1,         $lno    ] :
             /\G([(){}\[\]])/gc           ? [ GROUP,  $1,         $lno    ] :
+            /\G\/((?:\\.|[^\/])+)\//gc   ? [ REGEX,  $1,         $lno    ] :
             _fatal("Unrecognized", $lno)
             ;
     }
@@ -201,134 +212,13 @@ sub _unesc {
     return $_;
 }
 
+sub list {
+    my ($v) = @_;
+    return if !defined $v;
+    my $r = ref $v;
+    return @$v if $r eq 'ARRAY';
+    return %$v if $r eq 'HASH';
+    return $v;
+}
+
 1;
-
-__END__
-# Example
-
-docid id;
-
-defaults {
-    repeat;
-    noparse;
-    nostem;
-    nodefault;
-    nonorm;
-}
-
-term mtyp "Material type" {
-    source 007/0-1;
-    default "--";
-    prefix XMT;
-    norm [lowercase, blank2hash];
-}
-
-term id "Bib ID" {
-    norepeat;
-    source 001;
-    match numeric;
-    prefix Q;
-}
-
-term rtyp "Record type" {
-    source L/06;
-    norepeat;
-    norm [lowercase, blank2hash];
-    prefix XRT;
-}
-
-term mform "Material form" {
-    source 006/0;
-    norm [lowercase, blank2hash];
-    prefix XMF;
-}
-
-term mtyp "Material type" {
-    source 007/0-1;
-    default "--";
-    norm [lowercase, blank2hash];
-    prefix XMT;
-}
-
-term sig "Record signature" {
-    permute [rtyp, mtyp];
-    prefix XRS;
-}
-
-term rdacontent "RDA content type" {
-    source 336$b;
-    norm [trim, lowercase];
-    prefix X6R;
-}
-
-term rdamedia "RDA media type" {
-    source 337$b;
-    norm [trim, lowercase];
-    prefix X7R;
-}
-
-term rdacarrier "RDA carrier type" {
-    source 338$b;
-    norm [trim, lowercase];
-    prefix X8R;
-}
-
-term title "Title" {
-    source 245$abfgknps;
-    norm [lowercase, trim, nfc];
-    parse;
-    stem english;
-    prefix [S, ""];
-}
-
-term descrip "Physical description" {
-    source 300$abcefg;
-    norm [lowercase, trim];
-    parse;
-    stem english;
-    prefix [XDE, ""];
-}
-
-term gmd "General material designation" {
-    source 245$h;
-    norm [lowercase, alpha, trim];
-    parse;
-    stem english;
-    prefix [XGM, ""];
-}
-
-term inst "Holding institution" {
-    source 9ho$i;
-    prefix XHI;
-}
-
-term loc "Location" {
-    source 9ho$l;
-    prefix XHL;
-}
-
-term group "Record load institution" {
-    source 9bl$g;
-    prefix XBG;
-}
-
-term proj "Record load project" {
-    source 9bl$p;
-    prefix XBP;
-}
-
-term update "Record load update" {
-    source 9bl$u;
-    prefix XBU;
-}
-
-term batch "Record load batch" {
-    source 9bl$b;
-    prefix XBB;
-}
-
-term job "Record load job" {
-    source 9bl$j;
-    prefix XBJ;
-}
-
