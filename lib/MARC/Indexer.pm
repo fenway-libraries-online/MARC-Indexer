@@ -108,8 +108,8 @@ sub source2eval {
     }
     elsif ($source =~ m{^(00[0-9A-Za-z])(?:/(\d+)(?:-(\d+))?)?$}) {
         my ($tag, $b1, $bn) = ($1, $2, $3);
-        return sub { substr($_, $b1-1,$bn-$b1+1) } if defined $bn;
-        return sub { substr($_, $b1-1,        1) } if defined $b1;
+        return sub { substr($_, $b1,$bn-$b1+1) } if defined $bn;
+        return sub { substr($_, $b1,        1) } if defined $b1;
         return sub { $_ };
     }
     elsif ($source =~ m{^([0-9A-Za-z]{3})\$(.+)$}) {
