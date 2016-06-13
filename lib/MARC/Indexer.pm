@@ -3,6 +3,8 @@ package MARC::Indexer;
 use strict;
 use warnings;
 
+$MARC::Indexer::VERSION = '0.03';
+
 use MARC::Indexer::Config;
 use Unicode::Normalize;
 use POSIX qw(strftime);
@@ -61,6 +63,7 @@ sub derived2eval {
 
 sub source2tag {
     return 'L' if $_[0] =~ /^(?:L|leader)\b/;
+    return $1 if $_[0] =~ /^raw:(...)/;
     return substr($_[0], 0, 3);
 }
 
@@ -112,18 +115,31 @@ sub source2eval {
         return sub { substr($_, $b1,        1) } if defined $b1;
         return sub { $_ };
     }
-    elsif ($source =~ m{^([0-9A-Za-z]{3})\$(.+)$}) {
-        my ($tag, @subs) = ($1, split //, $2);
+    elsif ($source =~ m{^(raw:)?([0-9A-Za-z]{3})\$(.+)$}) {
+        my ($raw, $tag, @subs) = ($1, $2, split //, $3);
         my %want = map { $_ => 1 } @subs;
-        return sub {
-            pos($_) = 2;
-            my @subs;
-            while (/\x1f([^\x1f])([^\x1f]+)/gc) {
-                push @subs, $2 if $want{$1};
-            }
-            return if !@subs;
-            return join(' ', @subs);
-        };
+        if ($raw) {
+            return sub {
+                my @pieces = ( substr($_, 0, 2) );
+                pos($_) = 2;
+                while (/(\x1f([^\x1f])[^\x1f]+)/gc) {
+                    push @pieces, $1 if $want{$2};
+                }
+                return if @pieces < 2;
+                return join('', @pieces);
+            };
+        }
+        else {
+            return sub {
+                pos($_) = 2;
+                my @subs;
+                while (/\x1f([^\x1f])([^\x1f]+)/gc) {
+                    push @subs, $2 if $want{$1};
+                }
+                return if !@subs;
+                return join(' ', @subs);
+            };
+        }
     }
 }
 
@@ -192,6 +208,24 @@ sub norm_isbn {
     norm_trim(uc $_);
 }
 
+sub norm_delnf1 { unshift @_, 1; goto &_remove_non_filing_chars }
+sub norm_delnf2 { unshift @_, 2; goto &_remove_non_filing_chars }
+sub norm_cook {
+    local $_ = shift;
+    s/^..\x1f.//;
+    s/\x1f./ /g;
+    return $_;
+}
+
+sub _remove_non_filing_chars {
+    my $ind = shift;
+    local $_ = shift;
+    my $n = substr($_, $ind-1, 1);
+    if ($n ne '0') {
+        s/(?<=\x1fa)([^\x1f]+)/length($1) <= $n ? $1 : substr($1, $n)/e;
+    }
+    return $_;
+}
 
 1;
 
