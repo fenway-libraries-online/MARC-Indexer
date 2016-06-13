@@ -13,6 +13,7 @@ sub usage;
 my ($config_file);
 GetOptions(
     'c|config=s' => \$config_file,
+    'f|include-file' => sub { do $_[1] },
 ) or usage;
 usage if !defined $config_file;
 
