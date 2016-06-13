@@ -6,6 +6,7 @@ use warnings;
 $MARC::Indexer::VERSION = '0.03';
 
 use MARC::Indexer::Config;
+use MARC::Loop qw(marcparse);
 use Unicode::Normalize;
 use POSIX qw(strftime);
 
@@ -62,6 +63,7 @@ sub derived2eval {
 }
 
 sub source2tag {
+    return 'M' if $_[0] =~ /^::/;
     return 'L' if $_[0] =~ /^(?:L|leader)\b/;
     return $1 if $_[0] =~ /^raw:(...)/;
     return substr($_[0], 0, 3);
@@ -94,6 +96,7 @@ sub index {
 sub marcdata {
     my ($marcref, $want) = @_;
     my %data;
+    $data{'M'} = $marcref;
     $data{'L'} = [substr($$marcref, 0, 24)] if $want->{'L'};
     my $baseaddr = substr($$marcref, 12, 5) + 0;
     pos($$marcref) = 24;
@@ -114,6 +117,13 @@ sub source2eval {
         return sub { substr($_, $b1,$bn-$b1+1) } if defined $bn;
         return sub { substr($_, $b1,        1) } if defined $b1;
         return sub { $_ };
+    }
+    elsif ($source =~ m{^::(\w+)}) {
+        my $sub = map { __PACKAGE__->can('source_'.$1) || die "Unknown source function: $1" } @_;
+        return sub {
+            my ($marcref) = @_;
+            return $sub->($marcref);
+        }
     }
     elsif ($source =~ m{^(raw:)?([0-9A-Za-z]{3})\$(.+)$}) {
         my ($raw, $tag, @subs) = ($1, $2, split //, $3);
@@ -215,6 +225,12 @@ sub norm_cook {
     s/^..\x1f.//;
     s/\x1f./ /g;
     return $_;
+}
+
+sub source_pub_date {
+    my ($marcref) = @_;
+    my ($leader, $fields) = marcparse($marcref);
+    return;
 }
 
 sub _remove_non_filing_chars {
