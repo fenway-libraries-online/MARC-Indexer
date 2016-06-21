@@ -6,7 +6,7 @@ use warnings;
 $MARC::Indexer::VERSION = '0.03';
 
 use MARC::Indexer::Config;
-use MARC::Loop qw(marcparse);
+use MARC::Loop qw(marcparse TAG VALREF);
 use Unicode::Normalize;
 use POSIX qw(strftime);
 
@@ -119,7 +119,7 @@ sub source2eval {
         return sub { $_ };
     }
     elsif ($source =~ m{^::(\w+)}) {
-        my $sub = map { __PACKAGE__->can('source_'.$1) || die "Unknown source function: $1" } @_;
+        my $sub = map { __PACKAGE__->can('src_'.$1) || die "Unknown source function: $1" } @_;
         return sub {
             my ($marcref) = @_;
             return $sub->($marcref);
@@ -227,10 +227,13 @@ sub norm_cook {
     return $_;
 }
 
-sub source_pub_date {
+sub src_pub_date {
     my ($marcref) = @_;
     my ($leader, $fields) = marcparse($marcref);
-    return;
+    my ($f008) = grep { $_->[TAG] eq '008' } @$fields;
+    return $1 if defined($f008) && ${ $f008->[VALREF] } =~ /^.{7}([0-9]{4})/;
+    my ($f260) = grep { $_->[TAG] eq '260' } @$fields;
+    return $1 if defined($f260) && ${ $f260->[VALREF] } =~ /\x1fc([0-9]{4})/;
 }
 
 sub _remove_non_filing_chars {
