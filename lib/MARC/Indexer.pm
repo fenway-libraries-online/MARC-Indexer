@@ -96,7 +96,7 @@ sub index {
 sub marcdata {
     my ($marcref, $want) = @_;
     my %data;
-    $data{'M'} = $marcref;
+    $data{'M'} = [$marcref];
     $data{'L'} = [substr($$marcref, 0, 24)] if $want->{'L'};
     my $baseaddr = substr($$marcref, 12, 5) + 0;
     pos($$marcref) = 24;
@@ -119,7 +119,7 @@ sub source2eval {
         return sub { $_ };
     }
     elsif ($source =~ m{^::(\w+)}) {
-        my $sub = map { __PACKAGE__->can('src_'.$1) || die "Unknown source function: $1" } @_;
+        my $sub = __PACKAGE__->can('src_'.$1) || die "Unknown source function: $1";
         return sub {
             my ($marcref) = @_;
             return $sub->($marcref);
@@ -241,7 +241,7 @@ sub _remove_non_filing_chars {
     my $ind = shift;
     local $_ = shift;
     my $n = substr($_, $ind-1, 1);
-    if ($n ne '0') {
+    if ($n =~ /[1-9]/) {
         s/(?<=\x1fa)([^\x1f]+)/length($1) <= $n ? $1 : substr($1, $n)/e;
     }
     return $_;
