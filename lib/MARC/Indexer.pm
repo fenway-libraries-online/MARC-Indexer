@@ -231,9 +231,10 @@ sub src_pub_date {
     my ($marcref) = @_;
     my ($leader, $fields) = marcparse($marcref);
     my ($f008) = grep { $_->[TAG] eq '008' } @$fields;
-    return $1 if defined($f008) && ${ $f008->[VALREF] } =~ /^.{7}([0-9]{4})/;
+    return ($1) if defined($f008) && ${ $f008->[VALREF] } =~ /^.{7}([0-9]{4})/;
     my ($f260) = grep { $_->[TAG] eq '260' } @$fields;
-    return $1 if defined($f260) && ${ $f260->[VALREF] } =~ /\x1fc([0-9]{4})/;
+    return ($1) if defined($f260) && ${ $f260->[VALREF] } =~ /\x1fc([0-9]{4})/;
+    return ();
 }
 
 sub _remove_non_filing_chars {
