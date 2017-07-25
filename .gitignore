@@ -4,4 +4,6 @@ flo
 /Makefile
 /blib
 /pm_to_blib
-
+/MANIFEST
+*.bak
+*.tar.gz
