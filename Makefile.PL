@@ -11,5 +11,6 @@ WriteMakefile(
                         'MARC::Loop' => 0,
                         'Time::HiRes' => 0,
                         'Unicode::Normalize' => 0,
+                        'POSIX' => 0,
                     },
 );
