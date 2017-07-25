@@ -3,7 +3,7 @@ package MARC::Indexer;
 use strict;
 use warnings;
 
-$MARC::Indexer::VERSION = '0.03';
+$MARC::Indexer::VERSION = '0.04';
 
 use MARC::Indexer::Config;
 use MARC::Loop qw(marcparse TAG VALREF);
